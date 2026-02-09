@@ -1,0 +1,618 @@
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+
+const CinematicLanding = () => {
+  const navigate = useNavigate();
+
+  // Preload all frames
+  useEffect(() => {
+    if (!canvasRef.current) return;
+    
+    const canvas = canvasRef.current;
+    const context = canvas.getContext('2d');
+    
+    // Set canvas size
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    // Since we don't have actual frame images, we'll create procedural frames
+    // In production, replace this with: `/frames/frame_${i.toString().padStart(4, '0')}.jpg`
+    
+    const currentFrame = (index) => {
+      return index;
+    };
+
+    const renderFrame = (index) => {
+      const ctx = context;
+      const progress = index / frameCount;
+      
+      // Clear canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // Generate procedural agricultural scene based on scroll progress
+      renderProceduralScene(ctx, progress, canvas.width, canvas.height);
+    };
+
+    // Initial render
+    renderFrame(0);
+
+    // Store render function for scroll updates
+    canvasRef.current.renderFrame = renderFrame;
+
+  }, []);
+
+  // Procedural scene generation (simulates frame animation)
+  const renderProceduralScene = (ctx, progress, width, height) => {
+    // Phase detection
+    const phase1 = Math.min(progress / 0.15, 1); // 0-15%
+    const phase2 = Math.max(0, Math.min((progress - 0.15) / 0.15, 1)); // 15-30%
+    const phase3 = Math.max(0, Math.min((progress - 0.30) / 0.15, 1)); // 30-45%
+    const phase4 = Math.max(0, Math.min((progress - 0.45) / 0.12, 1)); // 45-57%
+    const phase5 = Math.max(0, Math.min((progress - 0.57) / 0.12, 1)); // 57-69%
+    const phase6 = Math.max(0, Math.min((progress - 0.69) / 0.10, 1)); // 69-79%
+    const phase7 = Math.max(0, Math.min((progress - 0.79) / 0.10, 1)); // 79-89%
+    const phase8 = Math.max(0, Math.min((progress - 0.89) / 0.11, 1)); // 89-100%
+
+    // PHASE 1: Sky and emerging land
+    const skyGradient = ctx.createLinearGradient(0, 0, 0, height);
+    skyGradient.addColorStop(0, `rgba(135, 206, 235, ${0.3 + phase1 * 0.7})`);
+    skyGradient.addColorStop(0.6, `rgba(176, 224, 230, ${0.2 + phase1 * 0.8})`);
+    skyGradient.addColorStop(1, `rgba(34, 139, 34, ${phase1 * 0.6})`);
+    ctx.fillStyle = skyGradient;
+    ctx.fillRect(0, 0, width, height);
+
+    // Horizon line (land emerging)
+    const horizonY = height * (0.7 - phase1 * 0.2);
+    ctx.fillStyle = `rgba(101, 67, 33, ${phase1})`;
+    ctx.fillRect(0, horizonY, width, height - horizonY);
+
+    // PHASE 2: Soil layers and sensors
+    if (phase2 > 0) {
+      // Soil layers
+      for (let i = 0; i < 3; i++) {
+        const layerY = horizonY + 80 + i * 60 * phase2;
+        const colors = ['#654321', '#8B4513', '#A0522D'];
+        ctx.fillStyle = colors[i];
+        ctx.globalAlpha = phase2 * 0.6;
+        ctx.fillRect(0, layerY, width, 50);
+        ctx.globalAlpha = 1;
+      }
+
+      // IoT Sensors rising
+      const sensorCount = 8;
+      for (let i = 0; i < sensorCount; i++) {
+        const x = (width / (sensorCount + 1)) * (i + 1);
+        const sensorY = horizonY + 40 - phase2 * 60;
+        
+        // Sensor body
+        ctx.fillStyle = `rgba(50, 50, 50, ${phase2})`;
+        ctx.fillRect(x - 8, sensorY, 16, 40 * phase2);
+        
+        // Sensor light
+        ctx.fillStyle = `rgba(0, 255, 100, ${phase2 * 0.8})`;
+        ctx.beginPath();
+        ctx.arc(x, sensorY - 5, 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Data particles
+        if (phase2 > 0.5) {
+          for (let j = 0; j < 3; j++) {
+            const particleY = sensorY - 80 - j * 40 * (phase2 - 0.5) * 2;
+            ctx.fillStyle = `rgba(100, 255, 150, ${(phase2 - 0.5) * 0.6})`;
+            ctx.beginPath();
+            ctx.arc(x + Math.sin(j) * 10, particleY, 3, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      }
+    }
+
+    // PHASE 3: AI Core
+    if (phase3 > 0) {
+      const coreX = width / 2;
+      const coreY = height * 0.35 - phase3 * 50;
+      
+      // AI Core glow
+      const gradient = ctx.createRadialGradient(coreX, coreY, 0, coreX, coreY, 150 * phase3);
+      gradient.addColorStop(0, `rgba(0, 200, 255, ${phase3 * 0.8})`);
+      gradient.addColorStop(0.5, `rgba(100, 150, 255, ${phase3 * 0.4})`);
+      gradient.addColorStop(1, 'rgba(0, 100, 200, 0)');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, width, height);
+
+      // Neural connections
+      if (phase3 > 0.3) {
+        ctx.strokeStyle = `rgba(100, 200, 255, ${(phase3 - 0.3) * 0.5})`;
+        ctx.lineWidth = 2;
+        const points = 12;
+        for (let i = 0; i < points; i++) {
+          const angle = (Math.PI * 2 / points) * i;
+          const x1 = coreX + Math.cos(angle) * 60;
+          const y1 = coreY + Math.sin(angle) * 60;
+          const x2 = coreX + Math.cos(angle) * 200 * phase3;
+          const y2 = coreY + Math.sin(angle) * 200 * phase3;
+          
+          ctx.beginPath();
+          ctx.moveTo(coreX, coreY);
+          ctx.lineTo(x2, y2);
+          ctx.stroke();
+          
+          // Node at end
+          ctx.fillStyle = `rgba(150, 255, 200, ${phase3})`;
+          ctx.beginPath();
+          ctx.arc(x2, y2, 6, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+
+    // PHASE 4: Crop fields
+    if (phase4 > 0) {
+      const fieldY = horizonY - 20;
+      const fieldHeight = 120;
+      
+      // Multiple crop fields
+      const crops = [
+        { x: width * 0.15, color: '#90EE90', opacity: phase4 },
+        { x: width * 0.35, color: '#FFD700', opacity: phase4 * 0.3 }, // Fading out
+        { x: width * 0.55, color: '#32CD32', opacity: phase4 }, // Glowing
+        { x: width * 0.75, color: '#98FB98', opacity: phase4 * 0.4 }, // Fading out
+      ];
+
+      crops.forEach((crop, idx) => {
+        ctx.fillStyle = crop.color;
+        ctx.globalAlpha = crop.opacity;
+        
+        // Crop rows
+        for (let row = 0; row < 6; row++) {
+          for (let col = 0; col < 8; col++) {
+            const x = crop.x - 60 + col * 15;
+            const y = fieldY + row * 20;
+            ctx.fillRect(x, y, 8, 12);
+          }
+        }
+
+        // Glow effect on recommended crops
+        if (idx === 0 || idx === 2) {
+          const glowGrad = ctx.createRadialGradient(crop.x, fieldY + 60, 0, crop.x, fieldY + 60, 100);
+          glowGrad.addColorStop(0, `rgba(100, 255, 100, ${phase4 * 0.4})`);
+          glowGrad.addColorStop(1, 'rgba(100, 255, 100, 0)');
+          ctx.fillStyle = glowGrad;
+          ctx.fillRect(crop.x - 100, fieldY, 200, fieldHeight);
+        }
+      });
+      ctx.globalAlpha = 1;
+    }
+
+    // PHASE 5: Disease detection (leaf zoom)
+    if (phase5 > 0) {
+      const leafCenterX = width * 0.5;
+      const leafCenterY = height * 0.5;
+      const leafScale = 1 + phase5 * 3;
+      
+      ctx.save();
+      ctx.translate(leafCenterX, leafCenterY);
+      ctx.scale(leafScale, leafScale);
+      
+      // Leaf shape
+      ctx.fillStyle = `rgba(60, 150, 60, ${0.9})`;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 80, 120, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Disease spots
+      if (phase5 > 0.3) {
+        const spots = [
+          { x: -20, y: -30, size: 15 },
+          { x: 25, y: 10, size: 20 },
+          { x: -15, y: 40, size: 12 },
+        ];
+        
+        spots.forEach(spot => {
+          // Red disease area
+          ctx.fillStyle = `rgba(200, 50, 50, ${(phase5 - 0.3) * 1.2})`;
+          ctx.beginPath();
+          ctx.arc(spot.x, spot.y, spot.size, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Scan lines
+          if (phase5 > 0.6) {
+            ctx.strokeStyle = `rgba(255, 0, 0, ${(phase5 - 0.6) * 2})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(spot.x, spot.y, spot.size + 10, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+        });
+      }
+      
+      ctx.restore();
+
+      // Scanning overlay
+      if (phase5 > 0.5) {
+        ctx.strokeStyle = `rgba(255, 255, 0, ${(phase5 - 0.5) * 1.5})`;
+        ctx.lineWidth = 3;
+        ctx.strokeRect(width * 0.25, height * 0.2, width * 0.5, height * 0.6);
+      }
+    }
+
+    // PHASE 6: Fertilizer particles
+    if (phase6 > 0) {
+      const nutrients = [
+        { label: 'N', color: '100, 150, 255', x: width * 0.3, baseY: height * 0.7 },
+        { label: 'P', color: '255, 200, 100', x: width * 0.5, baseY: height * 0.7 },
+        { label: 'K', color: '150, 255, 150', x: width * 0.7, baseY: height * 0.7 },
+      ];
+
+      nutrients.forEach(nutrient => {
+        // Particles flowing down
+        for (let i = 0; i < 20; i++) {
+          const particleProgress = (phase6 + i * 0.05) % 1;
+          const x = nutrient.x + Math.sin(i + phase6 * 5) * 30;
+          const y = height * 0.2 + particleProgress * (height * 0.5);
+          const size = 4 + Math.sin(i) * 2;
+          
+          ctx.fillStyle = `rgba(${nutrient.color}, ${phase6 * (1 - particleProgress) * 0.8})`;
+          ctx.beginPath();
+          ctx.arc(x, y, size, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Label
+        ctx.fillStyle = `rgba(255, 255, 255, ${phase6})`;
+        ctx.font = 'bold 32px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(nutrient.label, nutrient.x, height * 0.15);
+      });
+
+      // Soil balance indicator
+      if (phase6 > 0.5) {
+        const balanceY = height * 0.8;
+        ctx.fillStyle = `rgba(100, 200, 100, ${(phase6 - 0.5) * 0.6})`;
+        ctx.fillRect(width * 0.3, balanceY, width * 0.4 * phase6, 30);
+        
+        ctx.strokeStyle = `rgba(255, 255, 255, ${phase6})`;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(width * 0.3, balanceY, width * 0.4, 30);
+      }
+    }
+
+    // PHASE 7: Weather transitions
+    if (phase7 > 0) {
+      // Rain effect
+      if (phase7 < 0.5) {
+        ctx.strokeStyle = `rgba(150, 180, 255, ${phase7 * 0.6})`;
+        ctx.lineWidth = 1;
+        for (let i = 0; i < 100; i++) {
+          const x = Math.random() * width;
+          const y = (Math.random() * height - phase7 * 200) % height;
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+          ctx.lineTo(x - 2, y + 15);
+          ctx.stroke();
+        }
+      }
+      
+      // Sunlight
+      if (phase7 > 0.4) {
+        const sunAlpha = (phase7 - 0.4) * 1.5;
+        const sunX = width * 0.8;
+        const sunY = height * 0.2;
+        
+        // Sun
+        const sunGrad = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, 100);
+        sunGrad.addColorStop(0, `rgba(255, 255, 100, ${sunAlpha})`);
+        sunGrad.addColorStop(0.5, `rgba(255, 200, 50, ${sunAlpha * 0.5})`);
+        sunGrad.addColorStop(1, 'rgba(255, 150, 0, 0)');
+        ctx.fillStyle = sunGrad;
+        ctx.fillRect(0, 0, width, height);
+      }
+    }
+
+    // PHASE 8: Dashboard UI overlay
+    if (phase8 > 0) {
+      const dashY = height * 0.25;
+      const dashWidth = Math.min(width * 0.7, 900);
+      const dashX = (width - dashWidth) / 2;
+      
+      // Dashboard container
+      ctx.fillStyle = `rgba(15, 23, 42, ${phase8 * 0.85})`;
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+      ctx.shadowBlur = 30 * phase8;
+      ctx.fillRect(dashX, dashY, dashWidth, 400);
+      ctx.shadowBlur = 0;
+
+      // Dashboard border
+      ctx.strokeStyle = `rgba(100, 200, 255, ${phase8 * 0.6})`;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(dashX, dashY, dashWidth, 400);
+
+      // Mock charts and data
+      if (phase8 > 0.3) {
+        // Chart 1: Line graph
+        ctx.strokeStyle = `rgba(100, 255, 150, ${(phase8 - 0.3) * 1.2})`;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        for (let i = 0; i < 10; i++) {
+          const x = dashX + 50 + i * 80;
+          const y = dashY + 100 + Math.sin(i * 0.5) * 40;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+
+        // Chart 2: Bars
+        for (let i = 0; i < 5; i++) {
+          const barHeight = 80 + Math.random() * 100;
+          ctx.fillStyle = `rgba(100, 200, 255, ${(phase8 - 0.3) * 0.8})`;
+          ctx.fillRect(dashX + 50 + i * 80, dashY + 250, 50, barHeight * phase8);
+        }
+
+        // Alerts
+        ctx.fillStyle = `rgba(255, 200, 100, ${(phase8 - 0.5) * 1.5})`;
+        ctx.font = '16px Arial';
+        ctx.fillText('🌡️ Optimal Temperature', dashX + 600, dashY + 50);
+        ctx.fillText('💧 Irrigation Status: Good', dashX + 600, dashY + 100);
+        ctx.fillText('🌱 Growth Rate: +12%', dashX + 600, dashY + 150);
+      }
+    }
+  };
+
+  // Scroll handler
+  useEffect(() => {
+    if (!containerRef.current) return;
+    
+    const handleScroll = () => {
+      const container = containerRef.current;
+      if (!container) return;
+      
+      const scrollTop = container.scrollTop;
+      const heroHeight = window.innerHeight;
+      
+      // Check if we've scrolled past the hero
+      if (scrollTop > heroHeight * 0.3) {
+        setShowCinematic(true);
+      } else {
+        setShowCinematic(false);
+      }
+      
+      // Calculate progress only for cinematic section
+      const cinematicStart = heroHeight;
+      const cinematicScrollTop = Math.max(0, scrollTop - cinematicStart);
+      const cinematicScrollHeight = container.scrollHeight - container.clientHeight - cinematicStart;
+      const progress = cinematicScrollHeight > 0 ? cinematicScrollTop / cinematicScrollHeight : 0;
+      
+      setScrollProgress(progress);
+
+      // Render corresponding frame
+      if (canvasRef.current && canvasRef.current.renderFrame && showCinematic) {
+        const frameIndex = Math.min(
+          Math.floor(progress * frameCount),
+          frameCount - 1
+        );
+        canvasRef.current.renderFrame(frameIndex);
+      }
+    };
+
+    const container = containerRef.current;
+    container.addEventListener('scroll', handleScroll);
+    handleScroll(); // Initial render
+
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [showCinematic]);
+
+  // Resize handler
+  useEffect(() => {
+    const handleResize = () => {
+      const canvas = canvasRef.current;
+      if (canvas) {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        if (canvas.renderFrame) {
+          const frameIndex = Math.floor(scrollProgress * frameCount);
+          canvas.renderFrame(frameIndex);
+        }
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [scrollProgress]);
+
+  // Text content based on scroll progress
+  const getTextContent = () => {
+    if (scrollProgress < 0.15) {
+      return { title: 'Farming meets', subtitle: 'Artificial Intelligence', opacity: Math.min(scrollProgress / 0.10, 1) };
+    } else if (scrollProgress < 0.30) {
+      const phase = (scrollProgress - 0.15) / 0.15;
+      return { title: 'Real-time soil intelligence.', subtitle: 'Every 5 seconds.', opacity: phase };
+    } else if (scrollProgress < 0.45) {
+      const phase = (scrollProgress - 0.30) / 0.15;
+      return { title: 'Machine learning that', subtitle: 'understands your land.', opacity: phase };
+    } else if (scrollProgress < 0.57) {
+      const phase = (scrollProgress - 0.45) / 0.12;
+      return { title: 'Crop recommendations', subtitle: 'driven by data, not guesswork.', opacity: phase };
+    } else if (scrollProgress < 0.69) {
+      const phase = (scrollProgress - 0.57) / 0.12;
+      return { title: 'Instant plant disease detection', subtitle: 'using vision AI.', opacity: phase };
+    } else if (scrollProgress < 0.79) {
+      const phase = (scrollProgress - 0.69) / 0.10;
+      return { title: 'Precision nutrition.', subtitle: 'No waste.', opacity: phase };
+    } else if (scrollProgress < 0.89) {
+      const phase = (scrollProgress - 0.79) / 0.10;
+      return { title: 'Weather-aware', subtitle: 'farming decisions.', opacity: phase };
+    } else if (scrollProgress < 0.98) {
+      const phase = (scrollProgress - 0.89) / 0.09;
+      return { title: 'Everything.', subtitle: 'One intelligent platform.', opacity: phase };
+    } else {
+      return { title: 'The Future of Farming', subtitle: 'is Intelligent.', opacity: 1, cta: true };
+    }
+  };
+
+  const textContent = getTextContent();
+
+  return (
+    <>
+      {/* Fixed canvas background - only show when cinematic starts */}
+      {showCinematic && (
+        <canvas
+          ref={canvasRef}
+          className="fixed top-0 left-0 w-full h-full transition-opacity duration-1000"
+          style={{ zIndex: 1, opacity: showCinematic ? 1 : 0 }}
+        />
+      )}
+
+      {/* Scrollable container */}
+      <div
+        ref={containerRef}
+        className="fixed top-0 left-0 w-full h-full overflow-y-scroll"
+        style={{ zIndex: 2, scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
+        {/* STATIC HERO SECTION */}
+        <div 
+          ref={heroRef}
+          className="relative w-full h-screen flex items-center justify-center overflow-hidden"
+          style={{
+            background: 'linear-gradient(135deg, #86efac 0%, #a7f3d0 30%, #bfdbfe 60%, #93c5fd 100%)',
+          }}
+        >
+          {/* Subtle farmland texture overlay */}
+          <div 
+            className="absolute inset-0 opacity-20"
+            style={{
+              backgroundImage: 'radial-gradient(circle at 20% 50%, rgba(34, 139, 34, 0.1) 0%, transparent 50%), radial-gradient(circle at 80% 50%, rgba(139, 69, 19, 0.05) 0%, transparent 50%)',
+              filter: 'blur(60px)',
+            }}
+          />
+
+          {/* Ambient floating particles */}
+          {[...Array(15)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute rounded-full bg-white/20"
+              style={{
+                width: `${4 + Math.random() * 8}px`,
+                height: `${4 + Math.random() * 8}px`,
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                animation: `float ${20 + Math.random() * 15}s ease-in-out infinite`,
+                animationDelay: `${Math.random() * 5}s`,
+              }}
+            />
+          ))}
+
+          {/* Sunlight glow */}
+          <div 
+            className="absolute top-20 right-20 w-96 h-96 rounded-full opacity-30"
+            style={{
+              background: 'radial-gradient(circle, rgba(255, 255, 200, 0.4) 0%, transparent 70%)',
+              filter: 'blur(40px)',
+            }}
+          />
+
+          {/* Center Content */}
+          <div className="relative z-10 text-center px-8 max-w-5xl">
+            <h1 className="text-6xl md:text-8xl font-bold text-gray-900 mb-6 tracking-tight">
+              Smart Agriculture Platform
+            </h1>
+            
+            <p className="text-2xl md:text-3xl text-gray-800 font-medium mb-4">
+              AI-powered farming intelligence for better yields
+            </p>
+            
+            <p className="text-lg md:text-xl text-gray-700 mb-12 max-w-3xl mx-auto">
+              Real-time insights from soil, crops, and weather — all in one platform.
+            </p>
+
+            {/* CTAs */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <button
+                onClick={() => navigate('/register')}
+                className="px-10 py-4 bg-green-600 hover:bg-green-700 text-white text-lg font-semibold rounded-full shadow-xl transform hover:scale-105 transition-all duration-300"
+              >
+                Get Started
+              </button>
+              
+              <button
+                onClick={() => navigate('/login')}
+                className="px-10 py-4 bg-white/80 hover:bg-white text-gray-900 text-lg font-semibold rounded-full shadow-lg backdrop-blur-sm transform hover:scale-105 transition-all duration-300"
+              >
+                Sign In
+              </button>
+            </div>
+          </div>
+
+          {/* Scroll indicator */}
+          <div className="absolute bottom-12 left-1/2 transform -translate-x-1/2 text-gray-700 flex flex-col items-center animate-bounce">
+            <div className="text-sm mb-2">Scroll to explore</div>
+            <div className="text-2xl">↓</div>
+          </div>
+        </div>
+
+        {/* CINEMATIC SCROLL SECTION */}
+        <div style={{ height: '500vh' }}>
+          {/* Text overlay for cinematic section */}
+          {showCinematic && (
+            <div className="sticky top-0 w-full h-screen flex flex-col items-center justify-center pointer-events-none">
+              <div
+                className="text-center px-8 transition-opacity duration-500"
+                style={{ opacity: textContent.opacity }}
+              >
+                <h1 className="text-5xl md:text-7xl font-bold text-white mb-4 drop-shadow-2xl">
+                  {textContent.title}
+                </h1>
+                <p className="text-2xl md:text-4xl text-white/90 drop-shadow-xl">
+                  {textContent.subtitle}
+                </p>
+                
+                {textContent.cta && (
+                  <button
+                    onClick={() => navigate('/register')}
+                    className="mt-12 px-12 py-4 bg-green-500 hover:bg-green-600 text-white text-xl font-bold rounded-full shadow-2xl pointer-events-auto transform hover:scale-105 transition-all duration-300"
+                    style={{ opacity: textContent.opacity }}
+                  >
+                    Start Your Journey
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Scroll indicator for cinematic section */}
+      {showCinematic && scrollProgress < 0.05 && (
+        <div className="fixed bottom-12 left-1/2 transform -translate-x-1/2 text-white/60 flex flex-col items-center animate-bounce pointer-events-none" style={{ zIndex: 3 }}>
+          <div className="text-sm mb-2">Scroll to explore</div>
+          <div className="text-2xl">↓</div>
+        </div>
+      )}
+
+      {/* Animations and styles */}
+      <style>
+        {`
+          div::-webkit-scrollbar {
+            display: none;
+          }
+          
+          @keyframes float {
+            0%, 100% {
+              transform: translateY(0) translateX(0);
+            }
+            25% {
+              transform: translateY(-20px) translateX(10px);
+            }
+            50% {
+              transform: translateY(-10px) translateX(-10px);
+            }
+            75% {
+              transform: translateY(-30px) translateX(5px);
+            }
+          }
+        `}
+      </style>
+    </>
+  );
+};
+
+export default CinematicLanding;
