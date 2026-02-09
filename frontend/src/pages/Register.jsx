@@ -19,35 +19,11 @@ function Register({ setIsAuthenticated }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    
-    try {
-      console.log('Submitting registration data:', formData);
-      await authService.register(formData);
-      toast.success(t('register_success') || 'Registration successful! Please login.');
-      navigate('/login');
-    } catch (error) {
-      console.error('Registration error:', error.response?.data);
-      
-      let errorMsg = t('register_error') || 'Registration failed!';
-      
-      if (error.response?.data?.detail) {
-        const detail = error.response.data.detail;
-        
-        // If detail is an array of validation errors
-        if (Array.isArray(detail)) {
-          errorMsg = detail.map(err => `${err.loc?.[1] || 'Field'}: ${err.msg}`).join(', ');
-        } 
-        // If detail is a string
-        else if (typeof detail === 'string') {
-          errorMsg = detail;
-        }
-      }
-      
-      toast.error(errorMsg);
-    } finally {
-      setLoading(false);
-    }
+    // Authentication disabled - go directly to dashboard
+    setIsAuthenticated(true);
+    localStorage.setItem('token', 'demo-token');
+    toast.success(t('register_success') || 'Welcome to Smart Agriculture!');
+    navigate('/dashboard');
   };
 
   return (

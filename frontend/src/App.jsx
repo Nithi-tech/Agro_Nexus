@@ -27,19 +27,20 @@ import PestDiseaseManagement from './pages/PestDiseaseManagement';
 import AdvisoryHistory from './pages/AdvisoryHistory';
 
 function AppContent() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(true);
   const { i18n } = useTranslation();
   const location = useLocation();
   const isLandingPage = location.pathname === '/';
   const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    setIsAuthenticated(!!token);
+    // Authentication disabled - always authenticated
+    setIsAuthenticated(true);
   }, []);
 
   const PrivateRoute = ({ children }) => {
-    return isAuthenticated ? children : <Navigate to="/login" />;
+    // Authentication disabled - always allow access
+    return children;
   };
 
   return (

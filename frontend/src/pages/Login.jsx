@@ -12,19 +12,11 @@ function Login({ setIsAuthenticated }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    
-    try {
-      const response = await authService.login(formData);
-      localStorage.setItem('token', response.access_token);
-      setIsAuthenticated(true);
-      toast.success(t('login_success') || 'Login successful!');
-      navigate('/dashboard');
-    } catch (error) {
-      toast.error(error.response?.data?.detail || t('login_error') || 'Login failed!');
-    } finally {
-      setLoading(false);
-    }
+    // Authentication disabled - go directly to dashboard
+    setIsAuthenticated(true);
+    localStorage.setItem('token', 'demo-token');
+    toast.success(t('login_success') || 'Login successful!');
+    navigate('/dashboard');
   };
 
   return (
