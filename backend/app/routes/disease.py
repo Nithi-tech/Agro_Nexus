@@ -4,7 +4,7 @@ from app.database import get_db
 from app.models.models import User, Prediction
 from app.models.schemas import DiseaseDiagnosisInput, DiseaseDiagnosisOutput
 from app.services.ai_service import AIService
-from app.utils.auth import get_current_active_user
+from app.utils.auth import get_current_user_optional
 import json
 from typing import Optional
 
@@ -13,7 +13,7 @@ router = APIRouter(prefix="/api/disease", tags=["Disease Diagnosis"])
 @router.post("/diagnose", response_model=DiseaseDiagnosisOutput)
 async def diagnose_disease(
     input_data: DiseaseDiagnosisInput,
-    current_user: User = Depends(get_current_active_user),
+    current_user: Optional[User] = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
     """
@@ -30,18 +30,19 @@ async def diagnose_disease(
             language=input_data.language
         )
         
-        # Save diagnosis to database
-        prediction = Prediction(
-            user_id=current_user.id,
-            prediction_type="disease",
-            input_data=json.dumps(input_data.model_dump()),
-            output_data=json.dumps(result),
-            confidence=result.get("confidence", 0.0),
-            model_used=result.get("model_used", "AI-based")
-        )
-        
-        db.add(prediction)
-        db.commit()
+        # Save diagnosis to database if user is logged in
+        if current_user:
+            prediction = Prediction(
+                user_id=current_user.id,
+                prediction_type="disease",
+                input_data=json.dumps(input_data.model_dump()),
+                output_data=json.dumps(result),
+                confidence=result.get("confidence", 0.0),
+                model_used=result.get("model_used", "AI-based")
+            )
+            
+            db.add(prediction)
+            db.commit()
         
         return DiseaseDiagnosisOutput(**result)
         
@@ -54,7 +55,7 @@ async def detect_disease_from_image(
     file: UploadFile = File(...),
     crop_type: Optional[str] = Form("general"),
     language: Optional[str] = Form("en"),
-    current_user: User = Depends(get_current_active_user),
+    current_user: Optional[User] = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
     """
@@ -74,23 +75,24 @@ async def detect_disease_from_image(
             language=language
         )
         
-        # Save diagnosis to database
-        prediction = Prediction(
-            user_id=current_user.id,
-            prediction_type="disease_image",
-            input_data=json.dumps({
-                "crop_type": crop_type,
-                "filename": file.filename,
-                "content_type": file.content_type,
-                "language": language
-            }),
-            output_data=json.dumps(result),
-            confidence=result.get("confidence", 0.0),
-            model_used=result.get("model_used", "AI Vision Analysis")
-        )
-        
-        db.add(prediction)
-        db.commit()
+        # Save diagnosis to database if user is logged in
+        if current_user:
+            prediction = Prediction(
+                user_id=current_user.id,
+                prediction_type="disease_image",
+                input_data=json.dumps({
+                    "crop_type": crop_type,
+                    "filename": file.filename,
+                    "content_type": file.content_type,
+                    "language": language
+                }),
+                output_data=json.dumps(result),
+                confidence=result.get("confidence", 0.0),
+                model_used=result.get("model_used", "AI Vision Analysis")
+            )
+            
+            db.add(prediction)
+            db.commit()
         
         # Map AI response to frontend expected format with better fallbacks
         symptoms_list = result.get("affected_parts", [])
@@ -165,7 +167,7 @@ async def get_pest_management(
     crop_type: str,
     pest_issue: str,
     language: str = "en",
-    current_user: User = Depends(get_current_active_user)
+    current_user: Optional[User] = Depends(get_current_user_optional)
 ):
     """
     Get comprehensive pest management advice
@@ -174,7 +176,7 @@ async def get_pest_management(
     """
     
     try:
-        result = await ai_service.get_pest_management_advice(
+        result = await AIService.get_pest_management_advice(
             crop_type=crop_type,
             pest_issue=pest_issue,
             language=language
