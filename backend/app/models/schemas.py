@@ -48,6 +48,8 @@ class CropPredictionInput(BaseModel):
     language: str = "en"
 
 class CropPredictionOutput(BaseModel):
+    model_config = {"protected_namespaces": ()}
+    
     recommended_crop: str
     confidence: float
     alternative_crops: List[Dict[str, Any]]

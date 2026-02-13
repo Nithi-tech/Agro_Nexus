@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     WEATHER_API_URL: str = "https://api.openweathermap.org/data/2.5"
     
     # CORS
-    ALLOWED_ORIGINS: Union[List[str], str] = "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://127.0.0.1:3000"
+    ALLOWED_ORIGINS: Union[List[str], str] = "http://localhost:5173,http://localhost:5174,http://localhost:3000,http://127.0.0.1:5173,http://127.0.0.1:5174,http://127.0.0.1:3000"
     
     @field_validator('ALLOWED_ORIGINS', mode='before')
     @classmethod
