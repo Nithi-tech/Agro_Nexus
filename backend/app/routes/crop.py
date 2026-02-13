@@ -4,7 +4,8 @@ from app.database import get_db
 from app.models.models import User, Prediction
 from app.models.schemas import CropPredictionInput, CropPredictionOutput
 from app.services.ai_service import AIService
-from app.utils.auth import get_current_active_user
+from app.utils.auth import get_current_user_optional
+from typing import Optional
 import json
 
 router = APIRouter(prefix="/api/crop", tags=["Crop Prediction"])
@@ -12,7 +13,7 @@ router = APIRouter(prefix="/api/crop", tags=["Crop Prediction"])
 @router.post("/predict", response_model=CropPredictionOutput)
 async def predict_crop(
     input_data: CropPredictionInput,
-    current_user: User = Depends(get_current_active_user),
+    current_user: Optional[User] = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
     """
@@ -31,18 +32,19 @@ async def predict_crop(
             longitude=input_data.longitude
         )
         
-        # Save prediction to database
-        prediction = Prediction(
-            user_id=current_user.id,
-            prediction_type="crop",
-            input_data=json.dumps(input_data.model_dump()),
-            output_data=json.dumps(result),
-            confidence=result.get("confidence", 0.0),
-            model_used=result.get("model_used", "Unknown")
-        )
-        
-        db.add(prediction)
-        db.commit()
+        # Save prediction to database if user is logged in
+        if current_user:
+            prediction = Prediction(
+                user_id=current_user.id,
+                prediction_type="crop",
+                input_data=json.dumps(input_data.model_dump()),
+                output_data=json.dumps(result),
+                confidence=result.get("confidence", 0.0),
+                model_used=result.get("model_used", "Unknown")
+            )
+            
+            db.add(prediction)
+            db.commit()
         
         return CropPredictionOutput(
             recommended_crop=result["recommended_crop"],
