@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { diseaseService } from '../services/api';
@@ -9,9 +9,66 @@ function DiseaseDialog() {
   const [diagnosis, setDiagnosis] = useState(null);
   const [loading, setLoading] = useState(false);
   const [analysisStep, setAnalysisStep] = useState(0); // 0: ready, 1: uploaded, 2: analyzing, 3: complete
+  const [showCamera, setShowCamera] = useState(false);
+  const [cameraStream, setCameraStream] = useState(null);
   const { t } = useTranslation();
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+
+  // Open camera stream
+  const openCamera = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+      });
+      setCameraStream(stream);
+      setShowCamera(true);
+      // Wait for video element to be available
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play();
+        }
+      }, 100);
+      toast.success('Camera opened');
+    } catch (err) {
+      console.error('Camera error:', err);
+      // Fallback to file input with capture
+      cameraInputRef.current?.click();
+    }
+  }, []);
+
+  // Capture photo from camera
+  const capturePhoto = useCallback(() => {
+    if (videoRef.current && canvasRef.current) {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0);
+      
+      canvas.toBlob((blob) => {
+        const file = new File([blob], 'camera-capture.jpg', { type: 'image/jpeg' });
+        setImage(file);
+        setPreview(canvas.toDataURL('image/jpeg'));
+        setAnalysisStep(1);
+        toast.success('Photo captured!');
+        closeCamera();
+      }, 'image/jpeg', 0.9);
+    }
+  }, []);
+
+  // Close camera stream
+  const closeCamera = useCallback(() => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+      setCameraStream(null);
+    }
+    setShowCamera(false);
+  }, [cameraStream]);
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -98,10 +155,68 @@ function DiseaseDialog() {
     setPreview(null);
     setDiagnosis(null);
     setAnalysisStep(0);
+    closeCamera();
   };
 
   return (
     <div className="min-h-screen relative bg-transparent">
+      {/* Camera Modal */}
+      {showCamera && (
+        <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex flex-col items-center justify-center">
+          <div className="relative w-full max-w-2xl mx-4">
+            {/* Camera Header */}
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-white text-xl font-bold flex items-center gap-2">
+                <span>📷</span> Camera Preview
+              </h3>
+              <button
+                onClick={closeCamera}
+                className="text-white bg-red-500 hover:bg-red-600 px-4 py-2 rounded-lg font-semibold transition"
+              >
+                ✕ Close
+              </button>
+            </div>
+            
+            {/* Video Preview */}
+            <div className="relative rounded-2xl overflow-hidden bg-gray-900 border-4 border-green-500">
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className="w-full h-auto max-h-[60vh] object-contain"
+              />
+              {/* Camera overlay guide */}
+              <div className="absolute inset-0 pointer-events-none">
+                <div className="absolute inset-8 border-2 border-dashed border-green-400 rounded-lg opacity-50"></div>
+                <div className="absolute bottom-4 left-0 right-0 text-center text-green-400 text-sm">
+                  📍 Position the plant leaf within the frame
+                </div>
+              </div>
+            </div>
+            
+            {/* Capture Button */}
+            <div className="flex justify-center mt-6">
+              <button
+                onClick={capturePhoto}
+                className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-8 py-4 rounded-full font-bold text-lg shadow-lg transform hover:scale-105 transition-all flex items-center gap-3"
+              >
+                <span className="text-2xl">📸</span>
+                Capture Photo
+              </button>
+            </div>
+            
+            {/* Tips */}
+            <p className="text-gray-400 text-center mt-4 text-sm">
+              💡 Ensure good lighting and focus on the affected area of the plant
+            </p>
+          </div>
+          
+          {/* Hidden canvas for capturing */}
+          <canvas ref={canvasRef} className="hidden" />
+        </div>
+      )}
+
       <div className="container mx-auto px-4 py-8 relative z-10 max-w-6xl">
         
         {/* Header */}
@@ -149,10 +264,10 @@ function DiseaseDialog() {
                   </div>
                 </button>
 
-                {/* Camera Button */}
+                {/* Camera Button - Opens real camera */}
                 <button
                   type="button"
-                  onClick={() => cameraInputRef.current?.click()}
+                  onClick={openCamera}
                   className="relative group bg-gradient-to-br from-purple-50 to-pink-50 hover:from-purple-100 hover:to-pink-100 border-2 border-purple-300 rounded-2xl p-8 transition-all cursor-pointer"
                 >
                   <input
