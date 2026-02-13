@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.models import User, FertilizerRecommendation
 from app.models.schemas import FertilizerInput, FertilizerOutput
-from app.services.fertilizer_service import fertilizer_service
+from app.services.fertilizer_service import FertilizerService
 from app.utils.auth import get_current_active_user
 
 router = APIRouter(prefix="/api/fertilizer", tags=["Fertilizer Recommendation"])
@@ -22,7 +22,7 @@ async def recommend_fertilizer(
     
     try:
         # Get recommendation from fertilizer service with AI and language support
-        result = await fertilizer_service.recommend_fertilizer_ai(
+        result = await FertilizerService.recommend_fertilizer_ai(
             crop_type=input_data.crop_type,
             soil_type=input_data.soil_type,
             current_npk={

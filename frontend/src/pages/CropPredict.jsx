@@ -21,7 +21,7 @@ function CropPredict() {
   const [loading, setLoading] = useState(false);
   const [gpsLoading, setGpsLoading] = useState(false);
   const [dataSource, setDataSource] = useState(null);
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
 
   // Helper function to evaluate parameter quality
@@ -137,15 +137,27 @@ function CropPredict() {
         rainfall: parseFloat(formData.rainfall),
         location: formData.location || null,
         latitude: formData.latitude,
-        longitude: formData.longitude
+        longitude: formData.longitude,
+        language: i18n.language || 'en'
       };
       
+      console.log('[CropPredict] Sending to API:', JSON.stringify(data, null, 2));
       const response = await cropService.predictCrop(data);
-      setPrediction(response);
-      toast.success(t('prediction_success') || 'Prediction completed!');
+      console.log('[CropPredict] API Response:', JSON.stringify(response, null, 2));
+      // Map API response fields to frontend display fields
+      setPrediction({
+        crop: response.recommended_crop || response.crop || 'Unknown',
+        confidence: response.confidence || 0,
+        recommendations: response.reasoning || response.recommendations || '',
+        alternatives: response.alternative_crops || response.alternatives || [],
+        model_used: response.model_used || 'AI',
+        yield_potential: response.yield_potential || '',
+        growing_tips: response.growing_tips || []
+      });
+      toast.success(t('cropPredict.predictionSuccess'));
     } catch (error) {
       console.error('Crop prediction error:', error);
-      toast.error(t('prediction_error') || 'Prediction failed!');
+      toast.error(t('cropPredict.predictionError'));
     } finally {
       setLoading(false);
     }
@@ -165,28 +177,45 @@ function CropPredict() {
         const { latitude, longitude } = position.coords;
         
         try {
-          // Use reverse geocoding to get location name
+          // Use reverse geocoding to get location name with accept-language for accuracy
           const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&zoom=14&addressdetails=1`,
+            { headers: { 'Accept-Language': 'en' } }
           );
           const data = await response.json();
           
-          const locationName = data.address.city || 
-                               data.address.town || 
-                               data.address.village || 
-                               data.address.county || 
-                               data.address.state || 
+          // Prefer recognizable names: city > town > municipality > district, skip tiny villages
+          const addr = data.address;
+          const locationName = addr.city || 
+                               addr.town || 
+                               addr.municipality ||
+                               addr.city_district ||
+                               addr.suburb ||
+                               addr.district ||
+                               addr.state_district ||
+                               addr.county ||
+                               addr.village ||
+                               addr.state || 
                                'Unknown Location';
+          const districtName = addr.district || addr.state_district || '';
+          const stateName = addr.state || '';
+          
+          // Build accurate location: Name, District, State, Country
+          const locationParts = [locationName];
+          if (districtName && districtName !== locationName) locationParts.push(districtName);
+          if (stateName && stateName !== locationName && stateName !== districtName) locationParts.push(stateName);
+          if (addr.country) locationParts.push(addr.country);
+          const fullLocation = locationParts.join(', ');
           
           setFormData({
             ...formData,
-            location: `${locationName}, ${data.address.country || ''}`,
+            location: fullLocation,
             latitude,
             longitude
           });
           
           toast.dismiss();
-          toast.success(`Location set to ${locationName}`);
+          toast.success(`Location set to ${fullLocation}`);
         } catch (error) {
           console.error('Reverse geocoding error:', error);
           setFormData({
@@ -584,18 +613,18 @@ function CropPredict() {
             <div className="flex items-center space-x-2 mb-6">
               <span className="text-2xl">✅</span>
               <h2 className="text-xl font-bold text-green-700">
-                {t('prediction_result') || 'AI Prediction Result'}
+                {t('cropPredict.aiPredictionResult')}
               </h2>
             </div>
             
             <div className="space-y-4">
               <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-5 rounded-xl border border-green-200 shadow-md">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm text-gray-600 font-medium">{t('recommended_crop') || 'Recommended Crop'}</p>
+                  <p className="text-sm text-gray-600 font-medium">{t('cropPredict.recommendedCrop')}</p>
                   <span className="text-3xl">🌱</span>
                 </div>
                 <p className="text-3xl font-bold text-green-700 mb-2">{prediction.crop}</p>
-                <p className="text-xs text-green-600">Best suited for your field conditions</p>
+                <p className="text-xs text-green-600">{t('cropPredict.bestSuited')}</p>
               </div>
 
               {/* Enhanced Confidence & Risk Display */}
@@ -604,12 +633,12 @@ function CropPredict() {
                   <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
                     <p className="text-xs text-gray-600 mb-1 font-medium flex items-center space-x-1">
                       <span>📊</span>
-                      <span>{t('confidence') || 'Confidence Score'}</span>
+                      <span>{t('cropPredict.confidenceLabel')}</span>
                     </p>
                     <p className="text-2xl font-bold text-blue-700">{(prediction.confidence * 100).toFixed(1)}%</p>
                     {getConfidenceLevel(prediction.confidence) && (
                       <span className={`inline-block mt-2 text-xs px-2 py-1 rounded-full font-medium ${getConfidenceLevel(prediction.confidence).color}`}>
-                        {getConfidenceLevel(prediction.confidence).level} Confidence
+                        {prediction.confidence >= 0.8 ? t('cropPredict.highConfidence') : prediction.confidence >= 0.6 ? t('cropPredict.moderateConfidence') : t('cropPredict.lowConfidence')}
                       </span>
                     )}
                   </div>
@@ -625,7 +654,7 @@ function CropPredict() {
                   }`}>
                     <p className="text-xs text-gray-600 mb-1 font-medium flex items-center space-x-1">
                       <span>⚠️</span>
-                      <span>Risk Indicator</span>
+                      <span>{t('cropPredict.riskIndicator')}</span>
                     </p>
                     <p className={`text-2xl font-bold ${
                       getConfidenceLevel(prediction.confidence).risk === 'Low Risk'
@@ -634,30 +663,82 @@ function CropPredict() {
                         ? 'text-yellow-700'
                         : 'text-orange-700'
                     }`}>
-                      {getConfidenceLevel(prediction.confidence).risk.split(' ')[0]}
+                      {prediction.confidence >= 0.8 ? t('cropPredict.lowRisk').split(' ')[0] : prediction.confidence >= 0.6 ? t('cropPredict.mediumRisk').split(' ')[0] : t('cropPredict.highRisk').split(' ')[0]}
                     </p>
                     <span className={`inline-block mt-2 text-xs px-2 py-1 rounded-full font-medium ${getConfidenceLevel(prediction.confidence).color}`}>
-                      {getConfidenceLevel(prediction.confidence).risk}
+                      {prediction.confidence >= 0.8 ? t('cropPredict.lowRisk') : prediction.confidence >= 0.6 ? t('cropPredict.mediumRisk') : t('cropPredict.highRisk')}
                     </span>
                   </div>
                 )}
               </div>
 
+              {/* Yield Potential */}
+              {prediction.yield_potential && (
+                <div className="bg-gradient-to-br from-emerald-50 to-green-50 p-5 rounded-xl border border-emerald-200">
+                  <div className="flex items-center space-x-2 mb-3">
+                    <span className="text-xl">📈</span>
+                    <p className="text-sm text-gray-700 font-semibold">{t('cropPredict.yieldPotential')}</p>
+                  </div>
+                  <p className="text-gray-700 text-sm leading-relaxed">{prediction.yield_potential}</p>
+                </div>
+              )}
+
               <div className="bg-gradient-to-br from-amber-50 to-yellow-50 p-5 rounded-xl border border-amber-200">
                 <div className="flex items-center space-x-2 mb-3">
                   <span className="text-xl">💡</span>
-                  <p className="text-sm text-gray-700 font-semibold">Why this crop?</p>
+                    <p className="text-sm text-gray-700 font-semibold">{t('cropPredict.whyThisCrop')}</p>
                 </div>
                 <p className="text-gray-700 text-sm leading-relaxed">
-                  {prediction.recommendations || 'Recommended based on your soil NPK levels, pH balance, current temperature, humidity patterns, and expected rainfall. This crop has historically performed well under these conditions.'}
+                  {prediction.recommendations || t('cropPredict.bestSuited')}
                 </p>
               </div>
+
+              {/* Alternative Crops */}
+              {prediction.alternatives && prediction.alternatives.length > 0 && (
+                <div className="bg-gradient-to-br from-purple-50 to-indigo-50 p-5 rounded-xl border border-purple-200">
+                  <div className="flex items-center space-x-2 mb-3">
+                    <span className="text-xl">🌿</span>
+                    <p className="text-sm text-gray-700 font-semibold">{t('cropPredict.alternativeCrops')}</p>
+                  </div>
+                  <div className="grid grid-cols-1 gap-2">
+                    {prediction.alternatives.map((alt, idx) => (
+                      <div key={idx} className="flex items-center justify-between bg-white/70 px-4 py-2 rounded-lg border border-purple-100">
+                        <span className="font-medium text-gray-800">{alt.crop || alt.name || 'Unknown'}</span>
+                        <div className="flex items-center space-x-2">
+                          <div className="w-20 bg-gray-200 rounded-full h-2">
+                            <div className="bg-purple-500 h-2 rounded-full" style={{ width: `${(alt.confidence || 0) * 100}%` }}></div>
+                          </div>
+                          <span className="text-xs text-purple-700 font-medium">{((alt.confidence || 0) * 100).toFixed(0)}%</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Growing Tips */}
+              {prediction.growing_tips && prediction.growing_tips.length > 0 && (
+                <div className="bg-gradient-to-br from-teal-50 to-green-50 p-5 rounded-xl border border-teal-200">
+                  <div className="flex items-center space-x-2 mb-3">
+                    <span className="text-xl">📋</span>
+                    <p className="text-sm text-gray-700 font-semibold">{t('cropPredict.growingTips')}</p>
+                  </div>
+                  <ul className="space-y-2">
+                    {prediction.growing_tips.map((tip, idx) => (
+                      <li key={idx} className="flex items-start space-x-2 text-sm text-gray-700">
+                        <span className="text-green-500 mt-0.5">✓</span>
+                        <span>{tip}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               {/* Next Action Buttons */}
               <div className="pt-4 border-t border-gray-200">
                 <p className="text-sm font-semibold text-gray-700 mb-3 flex items-center space-x-2">
                   <span>🚀</span>
-                  <span>Next Actions</span>
+                  <span>{t('cropPredict.nextActions')}</span>
                 </p>
                 <div className="grid grid-cols-1 gap-3">
                   <button
@@ -667,8 +748,8 @@ function CropPredict() {
                     <div className="flex items-center space-x-3">
                       <span className="text-2xl">🧪</span>
                       <div className="text-left">
-                        <p className="font-semibold">View Fertilizer Recommendation</p>
-                        <p className="text-xs opacity-90">Optimize soil nutrients for {prediction.crop}</p>
+                        <p className="font-semibold">{t('cropPredict.viewFertilizer')}</p>
+                        <p className="text-xs opacity-90">{t('cropPredict.optimizeNutrients')} {prediction.crop}</p>
                       </div>
                     </div>
                     <span>→</span>
@@ -681,8 +762,8 @@ function CropPredict() {
                     <div className="flex items-center space-x-3">
                       <span className="text-2xl">💧</span>
                       <div className="text-left">
-                        <p className="font-semibold">Check Irrigation Advisory</p>
-                        <p className="text-xs opacity-90">Get smart watering schedule</p>
+                        <p className="font-semibold">{t('cropPredict.checkIrrigation')}</p>
+                        <p className="text-xs opacity-90">{t('cropPredict.smartWatering')}</p>
                       </div>
                     </div>
                     <span>→</span>

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.models import User, Prediction
 from app.models.schemas import DiseaseDiagnosisInput, DiseaseDiagnosisOutput
-from app.services.ai_service import ai_service
+from app.services.ai_service import AIService
 from app.utils.auth import get_current_active_user
 import json
 from typing import Optional
@@ -24,7 +24,7 @@ async def diagnose_disease(
     
     try:
         # Get diagnosis from AI service with language support
-        result = await ai_service.diagnose_disease_ai(
+        result = await AIService.diagnose_disease_ai(
             input_data.crop_type,
             input_data.symptoms,
             language=input_data.language
@@ -68,7 +68,7 @@ async def detect_disease_from_image(
         image_bytes = await file.read()
         
         # Get diagnosis from AI service with actual image
-        result = await ai_service.diagnose_disease_from_image(
+        result = await AIService.diagnose_disease_from_image(
             image_bytes=image_bytes,
             crop_type=crop_type,
             language=language
