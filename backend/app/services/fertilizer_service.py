@@ -113,14 +113,14 @@ Respond ONLY with valid JSON:
                             "content": prompt
                         }
                     ],
-                    model="llama-3.1-70b-versatile",
+                    model="llama-3.3-70b-versatile",
                     temperature=0.3,
                     max_tokens=2000,
                     response_format={"type": "json_object"}
                 )
                 
                 result = json.loads(chat_completion.choices[0].message.content)
-                result["model_used"] = "Groq Llama-3.1-70B"
+                result["model_used"] = "Groq Llama-3.3-70B"
                 result["language"] = language
                 return result
                 

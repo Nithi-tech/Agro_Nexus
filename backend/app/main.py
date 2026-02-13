@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from app.config import settings
-from app.database import init_db
+from app.database import init_db, seed_demo_user
 import logging
 
 # Import routes
@@ -85,6 +85,7 @@ async def startup_event():
     logger.info("Starting Smart Agriculture API...")
     init_db()
     logger.info("✅ Database initialized")
+    seed_demo_user()
     logger.info(f"🌍 Environment: {settings.ENVIRONMENT}")
     logger.info(f"🔐 CORS Origins: {settings.ALLOWED_ORIGINS}")
 

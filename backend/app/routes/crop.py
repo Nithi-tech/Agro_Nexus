@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.models import User, Prediction
 from app.models.schemas import CropPredictionInput, CropPredictionOutput
-from app.services.ai_service import ai_service
+from app.services.ai_service import AIService
 from app.utils.auth import get_current_active_user
 import json
 
@@ -23,7 +23,7 @@ async def predict_crop(
     
     try:
         # Get prediction from AI service with language and location support
-        result = await ai_service.predict_crop_ai(
+        result = await AIService.predict_crop_ai(
             input_data.model_dump(exclude={'language'}),
             language=input_data.language,
             location=input_data.location,
@@ -49,7 +49,9 @@ async def predict_crop(
             confidence=result["confidence"],
             alternative_crops=result.get("alternatives", []),
             reasoning=result.get("reasoning", "Based on soil and climate analysis"),
-            model_used=result.get("model_used", "Rule-based")
+            model_used=result.get("model_used", "Rule-based"),
+            yield_potential=result.get("yield_potential", ""),
+            growing_tips=result.get("growing_tips", [])
         )
         
     except Exception as e:

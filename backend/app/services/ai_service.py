@@ -57,6 +57,9 @@ class AIService:
     async def predict_crop_ai(input_data: Dict[str, float], language: str = "en", location: str = None, latitude: float = None, longitude: float = None) -> Dict[str, Any]:
         """Use AI API for crop prediction with language and location support"""
         
+        print(f"[CROP-DEBUG] predict_crop_ai called with: N={input_data.get('nitrogen')}, P={input_data.get('phosphorus')}, K={input_data.get('potassium')}, temp={input_data.get('temperature')}, humidity={input_data.get('humidity')}, ph={input_data.get('ph')}, rainfall={input_data.get('rainfall')}, location={location}")
+        print(f"[CROP-DEBUG] GROQ_AVAILABLE={GROQ_AVAILABLE}, OPENAI_AVAILABLE={OPENAI_AVAILABLE}, GEMINI_AVAILABLE={GEMINI_AVAILABLE}")
+        
         if GROQ_AVAILABLE:
             return await AIService._predict_with_groq(input_data, language, location, latitude, longitude)
         elif OPENAI_AVAILABLE:
@@ -80,42 +83,43 @@ class AIService:
         if latitude is not None and longitude is not None:
             location_context += f"\n- Coordinates: {latitude}°N, {longitude}°E"
         
-        prompt = f"""You are an expert agricultural advisor. Analyze the following soil and climate conditions and recommend the best crop.
+        prompt = f"""You are an expert agricultural advisor with deep knowledge of Indian agriculture. Carefully analyze ALL the following soil and climate parameters and recommend the MOST SUITABLE crop.
 
 Soil and Climate Data:
-- Nitrogen (N): {input_data['nitrogen']} kg/ha
-- Phosphorus (P): {input_data['phosphorus']} kg/ha
-- Potassium (K): {input_data['potassium']} kg/ha
-- Temperature: {input_data['temperature']}°C
-- Humidity: {input_data['humidity']}%
-- Soil pH: {input_data['ph']}
-- Rainfall: {input_data['rainfall']} mm{location_context}
+- Nitrogen (N): {input_data['nitrogen']} kg/ha ({"Low" if input_data['nitrogen'] < 50 else "Medium" if input_data['nitrogen'] < 100 else "High"})
+- Phosphorus (P): {input_data['phosphorus']} kg/ha ({"Low" if input_data['phosphorus'] < 30 else "Medium" if input_data['phosphorus'] < 60 else "High"})
+- Potassium (K): {input_data['potassium']} kg/ha ({"Low" if input_data['potassium'] < 30 else "Medium" if input_data['potassium'] < 60 else "High"})
+- Temperature: {input_data['temperature']}°C ({"Cold" if input_data['temperature'] < 15 else "Cool" if input_data['temperature'] < 22 else "Warm" if input_data['temperature'] < 30 else "Hot"})
+- Humidity: {input_data['humidity']}% ({"Low" if input_data['humidity'] < 40 else "Moderate" if input_data['humidity'] < 65 else "High"})
+- Soil pH: {input_data['ph']} ({"Acidic" if input_data['ph'] < 6.0 else "Slightly Acidic" if input_data['ph'] < 6.8 else "Neutral" if input_data['ph'] < 7.2 else "Alkaline"})
+- Rainfall: {input_data['rainfall']} mm ({"Very Low" if input_data['rainfall'] < 50 else "Low" if input_data['rainfall'] < 100 else "Moderate" if input_data['rainfall'] < 200 else "High"}){location_context}
 
-IMPORTANT: Consider the location{' (' + location + ')' if location else ''} when recommending crops. Account for:
-- Regional climate patterns and seasonal variations
-- Local soil characteristics and agricultural practices
-- Crops traditionally successful in this region
-- Market demand and economic viability for this location
+CRITICAL INSTRUCTIONS:
+1. The recommended crop MUST match the ACTUAL soil nutrient levels, temperature, humidity, and rainfall given above. Do NOT default to Rice or Wheat without justification.
+2. Low nitrogen ({input_data['nitrogen']} kg/ha) means crops needing high nitrogen (like rice, maize, sugarcane) are LESS suitable unless other factors strongly compensate.
+3. Consider ALL parameters together - a crop must fit most conditions, not just location.
+4. If location is provided, consider regional suitability but PRIORITIZE the actual soil/climate data.
+5. Different input combinations MUST result in different crop recommendations.
+6. Set confidence based on how well the conditions match (0.6-0.7 for partial match, 0.8-0.9 for good match, 0.95+ only for perfect match).
 
-Provide a detailed response in {lang_name}. Include:
-1. The most recommended crop (specific to this location and conditions)
-2. Why this crop is suitable (detailed reasoning including location factors)
-3. Expected yield potential
-4. Growing tips and best practices for this region
+Provide response in {lang_name}. Include:
+1. The most recommended crop based on THESE SPECIFIC conditions
+2. Detailed reasoning explaining WHY this crop suits these exact NPK, pH, temperature, humidity, rainfall values
+3. Expected yield potential for this region
 4. Growing tips and best practices
-5. Three alternative crop options
+5. Three alternative crop options with different confidence scores
 
 Respond ONLY with valid JSON in this exact format:
 {{
   "recommended_crop": "crop name",
-  "confidence": 0.95,
-  "reasoning": "detailed explanation in {lang_name}",
+  "confidence": 0.85,
+  "reasoning": "detailed explanation referencing actual input values in {lang_name}",
   "yield_potential": "description in {lang_name}",
   "growing_tips": ["tip1 in {lang_name}", "tip2 in {lang_name}", "tip3 in {lang_name}"],
   "alternatives": [
-    {{"crop": "alternative1", "confidence": 0.85, "reason": "why in {lang_name}"}},
-    {{"crop": "alternative2", "confidence": 0.75, "reason": "why in {lang_name}"}},
-    {{"crop": "alternative3", "confidence": 0.65, "reason": "why in {lang_name}"}}
+    {{"crop": "alternative1", "confidence": 0.75, "reason": "why in {lang_name}"}},
+    {{"crop": "alternative2", "confidence": 0.65, "reason": "why in {lang_name}"}},
+    {{"crop": "alternative3", "confidence": 0.55, "reason": "why in {lang_name}"}}
   ]
 }}"""
         
@@ -124,7 +128,7 @@ Respond ONLY with valid JSON in this exact format:
                 messages=[
                     {
                         "role": "system",
-                        "content": f"You are an expert agricultural advisor. Always respond in {lang_name} with detailed, practical advice. Provide responses in valid JSON format only."
+                        "content": f"You are an expert agricultural scientist. Analyze the EXACT soil nutrient levels (N, P, K), pH, temperature, humidity, and rainfall provided. Your recommendation MUST be based on these specific values - different inputs should produce different crop recommendations. Respond in {lang_name} with valid JSON only."
                     },
                     {
                         "role": "user",
@@ -132,18 +136,19 @@ Respond ONLY with valid JSON in this exact format:
                     }
                 ],
                 model="llama-3.3-70b-versatile",  # Fast, high-quality model
-                temperature=0.3,
+                temperature=0.5,
                 max_tokens=2000,
                 response_format={"type": "json_object"}
             )
             
             result = json.loads(chat_completion.choices[0].message.content)
-            result["model_used"] = "Groq Llama-3.1-70B"
+            result["model_used"] = "Groq Llama-3.3-70B"
             result["language"] = language
+            print(f"[CROP-DEBUG] Groq returned: crop={result.get('recommended_crop')}, confidence={result.get('confidence')}")
             return result
             
         except Exception as e:
-            print(f"Groq API error: {e}")
+            print(f"[CROP-DEBUG] Groq API error, falling back to rules: {e}")
             return AIService._predict_with_rules(input_data)
     
     @staticmethod

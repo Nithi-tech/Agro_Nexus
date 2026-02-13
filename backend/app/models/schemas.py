@@ -53,6 +53,8 @@ class CropPredictionOutput(BaseModel):
     alternative_crops: List[Dict[str, Any]]
     reasoning: str
     model_used: str
+    yield_potential: Optional[str] = None
+    growing_tips: Optional[List[str]] = None
 
 # Disease Diagnosis Schemas
 class DiseaseDiagnosisInput(BaseModel):
